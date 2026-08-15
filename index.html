@@ -1,0 +1,1309 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Caribbean Bus Rota</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600&family=DM+Mono:wght@500&display=swap" rel="stylesheet">
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --bg:      #F0F4F8;
+    --surface: #FFFFFF;
+    --border:  #D8E2EE;
+    --text:    #1A2332;
+    --muted:   #6B7E95;
+    --car-bg:   #FEF3E8;
+    --car-text: #C25B00;
+    --car-dot:  #F08030;
+    --am-accent: #F5F9FF;
+    --pm-accent: #FFFBF5;
+    --accent:   #3D72E8;
+  }
+
+  body {
+    font-family: 'DM Sans', sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    min-height: 100vh;
+    padding: 1.5rem 1rem 4rem;
+  }
+
+  .page { max-width: 600px; margin: 0 auto; }
+
+  /* ── Header ── */
+  header {
+    display: flex; align-items: flex-start;
+    gap: 1.25rem; margin-bottom: 1.75rem;
+  }
+  .bus-icon {
+    flex-shrink: 0; width: 52px; height: 52px;
+    background: var(--text); border-radius: 12px;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 1.6rem;
+  }
+  header h1 { font-size: 1.5rem; font-weight: 600; letter-spacing: -0.02em; line-height: 1.2; }
+  header p  { margin-top: 0.3rem; font-size: 0.85rem; color: var(--muted); line-height: 1.5; }
+
+  /* ── Tab bar ── */
+  .tab-bar {
+    display: flex; gap: 0;
+    margin-bottom: 1.25rem;
+    border-bottom: 2px solid var(--border);
+    overflow-x: auto;
+  }
+
+  .tab-bar label {
+    padding: 0.55rem 0.65rem;
+    font-size: 0.78rem; font-weight: 600;
+    color: var(--muted); cursor: pointer;
+    border-bottom: 2px solid transparent;
+    margin-bottom: -2px;
+    white-space: nowrap;
+    flex: 1; text-align: center;
+    transition: color 0.15s, border-color 0.15s;
+    user-select: none;
+  }
+  .tab-bar label:hover { color: var(--text); }
+
+  /* Tab radio inputs */
+  input.tab-radio { display: none; }
+
+  #tab-rota:checked   ~ .tab-bar label[for="tab-rota"],
+  #tab-times:checked  ~ .tab-bar label[for="tab-times"],
+  #tab-route:checked  ~ .tab-bar label[for="tab-route"],
+  #tab-rules:checked  ~ .tab-bar label[for="tab-rules"],
+  #tab-team:checked   ~ .tab-bar label[for="tab-team"],
+  #tab-cal:checked    ~ .tab-bar label[for="tab-cal"] {
+    color: var(--text);
+    border-bottom-color: var(--text);
+  }
+
+  /* Tab panels */
+  .tab-panel { display: none; }
+
+  #tab-rota:checked  ~ .tab-content #panel-rota,
+  #tab-times:checked ~ .tab-content #panel-times,
+  #tab-route:checked ~ .tab-content #panel-route,
+  #tab-rules:checked ~ .tab-content #panel-rules,
+  #tab-team:checked  ~ .tab-content #panel-team,
+  #tab-cal:checked   ~ .tab-content #panel-cal { display: block; }
+
+  /* ── Shared card style ── */
+  .card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 14px;
+    padding: 1.25rem 1.25rem;
+    box-shadow: 0 2px 12px rgba(26,35,50,0.06);
+    margin-bottom: 1rem;
+  }
+
+  .card h2 {
+    font-size: 0.95rem; font-weight: 600;
+    margin-bottom: 0.85rem; color: var(--text);
+  }
+
+  /* ── Times panel ── */
+  .timeline { display: flex; flex-direction: column; gap: 0; }
+
+  .tl-row {
+    display: flex; align-items: stretch; gap: 1rem;
+  }
+
+  .tl-left {
+    display: flex; flex-direction: column; align-items: center;
+    width: 44px; flex-shrink: 0;
+  }
+
+  .tl-dot {
+    width: 12px; height: 12px; border-radius: 50%; flex-shrink: 0;
+    margin-top: 3px;
+  }
+  .tl-dot.am { background: #3D72E8; }
+  .tl-dot.pm { background: #F08030; }
+  .tl-dot.bus { background: #6B7E95; }
+
+  .tl-line {
+    width: 2px; background: var(--border);
+    flex: 1; margin: 4px 0;
+  }
+
+  .tl-time {
+    font-family: 'DM Mono', monospace;
+    font-size: 0.78rem; font-weight: 500;
+    color: var(--muted); padding-top: 1px;
+    text-align: right; width: 44px; flex-shrink: 0;
+    line-height: 1.2;
+  }
+
+  .tl-body { padding: 0 0 1.1rem 0; flex: 1; }
+  .tl-row:last-child .tl-body { padding-bottom: 0; }
+
+  .tl-title {
+    font-weight: 600; font-size: 0.88rem;
+    color: var(--text); line-height: 1.3;
+  }
+  .tl-desc {
+    font-size: 0.80rem; color: var(--muted);
+    margin-top: 0.2rem; line-height: 1.4;
+  }
+
+  .am-pm-label {
+    display: inline-block;
+    font-size: 0.65rem; font-weight: 600;
+    letter-spacing: 0.07em; text-transform: uppercase;
+    padding: 0.1rem 0.45rem; border-radius: 4px;
+    margin-bottom: 0.6rem;
+  }
+  .am-pm-label.am { background: #DBEAFE; color: #1E5FAD; }
+  .am-pm-label.pm { background: #FEF3C7; color: #92600A; }
+
+  /* ── Locations panel ── */
+  .location-list { display: flex; flex-direction: column; gap: 0.75rem; }
+
+  .location-item {
+    display: flex; align-items: flex-start; gap: 0.85rem;
+    padding: 0.85rem 1rem;
+    background: var(--bg); border-radius: 10px;
+    border: 1px solid var(--border);
+    text-decoration: none; color: inherit;
+    transition: box-shadow 0.15s, border-color 0.15s;
+  }
+  .location-item:hover {
+    border-color: var(--accent);
+    box-shadow: 0 0 0 2px rgba(61,114,232,0.15);
+  }
+
+  .loc-icon {
+    font-size: 1.4rem; flex-shrink: 0; margin-top: 1px;
+  }
+  .loc-body { flex: 1; }
+  .loc-name { font-weight: 600; font-size: 0.88rem; color: var(--text); }
+  .loc-desc { font-size: 0.78rem; color: var(--muted); margin-top: 0.15rem; line-height: 1.4; }
+  .loc-link {
+    font-size: 0.72rem; color: var(--accent); font-weight: 500;
+    margin-top: 0.3rem; display: flex; align-items: center; gap: 0.25rem;
+  }
+  .loc-arrow { font-size: 0.7rem; }
+
+  /* ── Rules panel ── */
+  .rules-list { display: flex; flex-direction: column; gap: 0.65rem; }
+
+  .rule-item {
+    display: flex; gap: 0.85rem; align-items: flex-start;
+    padding: 0.75rem 1rem;
+    background: var(--bg); border-radius: 10px;
+    border: 1px solid var(--border);
+    font-size: 0.85rem; line-height: 1.5; color: var(--text);
+  }
+  .rule-icon { font-size: 1.1rem; flex-shrink: 0; margin-top: 1px; }
+  .rule-text strong { font-weight: 600; display: block; margin-bottom: 0.1rem; }
+
+  /* ── Rota panel (same as before) ── */
+  input[type="radio"].parent-radio { display: none; }
+
+  .hint-bar {
+    font-size: 0.78rem; color: var(--muted);
+    margin-bottom: 0.6rem; padding: 0 0.1rem; min-height: 1.2em;
+  }
+
+  .selector { display: flex; flex-direction: column; gap: 0.4rem; margin-bottom: 1rem; }
+  .selector-row { display: flex; flex-wrap: wrap; gap: 0.5rem; }
+
+  .selector label {
+    display: inline-flex; align-items: center; gap: 0.35rem;
+    padding: 0.35rem 0.85rem; border-radius: 999px;
+    font-size: 0.82rem; font-weight: 500;
+    cursor: pointer; border: 1.5px solid transparent;
+    transition: box-shadow 0.15s; user-select: none;
+  }
+  .selector label.car  { background: var(--car-bg); color: var(--car-text); border-color: var(--car-bg); }
+  .selector label .dot { width: 6px; height: 6px; border-radius: 50%; flex-shrink: 0; background: var(--car-dot); }
+  .selector label.show-all { background: var(--surface); color: var(--muted); border: 1.5px solid var(--border); }
+  .selector label.show-all:hover { border-color: var(--text); color: var(--text); }
+
+  #p-all:checked ~ .tab-content .selector label[for="p-all"] {
+    border-color: var(--text); color: var(--text); box-shadow: 0 0 0 2px var(--text);
+  }
+
+  .table-wrap {
+    background: var(--surface); border: 1px solid var(--border);
+    border-radius: 14px; overflow-x: auto; -webkit-overflow-scrolling: touch;
+    box-shadow: 0 2px 12px rgba(26,35,50,0.06);
+  }
+
+  table {
+    width: 100%; min-width: 320px;
+    border-collapse: separate; border-spacing: 0; font-size: 0.875rem;
+  }
+
+  thead th {
+    position: sticky; top: 0; z-index: 3;
+    padding: 0.6rem 1rem; font-size: 0.7rem; font-weight: 600;
+    letter-spacing: 0.06em; text-transform: uppercase;
+    text-align: center; border-bottom: 2px solid var(--border);
+  }
+  thead th.day-col {
+    text-align: left; background: var(--surface); color: var(--text);
+    width: 130px; position: sticky; left: 0; z-index: 4;
+    box-shadow: 2px 0 6px -2px rgba(26,35,50,0.10);
+  }
+  thead th.car { background: var(--car-bg); color: var(--car-text); }
+
+  tr.week-banner td {
+    background: var(--text); color: #fff;
+    font-size: 0.68rem; font-weight: 600;
+    letter-spacing: 0.1em; text-transform: uppercase;
+    padding: 0.4rem 1rem;
+    border-bottom: 1px solid rgba(255,255,255,0.1);
+  }
+  tr.week-banner td.banner-day { position: sticky; left: 0; z-index: 2; box-shadow: 2px 0 6px -2px rgba(26,35,50,0.25); }
+  tr.week-banner td.banner-am  { color: #93c5fd; text-align: center; border-left: 1px solid rgba(255,255,255,0.12); }
+  tr.week-banner td.banner-pm  { color: #fcd34d; text-align: center; border-left: 1px solid rgba(255,255,255,0.12); }
+
+  tbody tr.am-row td { background: var(--am-accent); border-bottom: 1px solid #eaf0f8; }
+  tbody tr.pm-row td { background: var(--pm-accent); border-bottom: 1px solid #f0ece4; }
+  tbody tr:hover td { filter: brightness(0.97); }
+
+  /* No school row */
+  tbody tr.no-school-row td {
+    background: var(--bg);
+    border-bottom: 1px solid var(--border);
+  }
+  td.no-school-cell {
+    text-align: center;
+    font-size: 0.78rem;
+    font-weight: 600;
+    color: var(--muted);
+    letter-spacing: 0.03em;
+    padding: 0.55rem 1rem;
+  }
+
+  td { padding: 0.7rem 1rem; vertical-align: middle; }
+
+  tbody td.day-cell {
+    position: sticky; left: 0; z-index: 2;
+    background: inherit; white-space: nowrap;
+    box-shadow: 2px 0 6px -2px rgba(26,35,50,0.10);
+  }
+  .day-label { font-weight: 600; font-size: 0.875rem; }
+
+  td.name-cell { text-align: center; }
+  td.name-cell label {
+    display: inline-flex; align-items: center; gap: 0.35rem;
+    padding: 0.3rem 0.75rem; border-radius: 999px;
+    font-weight: 500; font-size: 0.82rem; white-space: nowrap;
+    cursor: pointer; background: var(--car-bg); color: var(--car-text);
+    transition: box-shadow 0.15s, transform 0.12s, opacity 0.15s;
+  }
+  td.name-cell label .dot { width: 6px; height: 6px; border-radius: 50%; flex-shrink: 0; background: var(--car-dot); }
+  td.name-cell label:hover { box-shadow: 0 0 0 2px var(--car-dot); }
+
+  /* Dimming */
+  #p-romelyn:checked ~ .tab-content td.name-cell label,
+  #p-athena:checked  ~ .tab-content td.name-cell label,
+  #p-jessie:checked  ~ .tab-content td.name-cell label,
+  #p-mila:checked    ~ .tab-content td.name-cell label { opacity: 0.18; }
+
+  /* Highlight */
+  #p-romelyn:checked ~ .tab-content td.name-cell label[for="p-romelyn"],
+  #p-athena:checked  ~ .tab-content td.name-cell label[for="p-athena"],
+  #p-jessie:checked  ~ .tab-content td.name-cell label[for="p-jessie"],
+  #p-mila:checked    ~ .tab-content td.name-cell label[for="p-mila"] {
+    opacity: 1; box-shadow: 0 0 0 2.5px var(--car-dot); transform: scale(1.07);
+  }
+
+  /* Row highlight */
+  #p-romelyn:checked ~ .tab-content tr:has(label[for="p-romelyn"]) td,
+  #p-athena:checked  ~ .tab-content tr:has(label[for="p-athena"]) td,
+  #p-jessie:checked  ~ .tab-content tr:has(label[for="p-jessie"]) td,
+  #p-mila:checked    ~ .tab-content tr:has(label[for="p-mila"]) td { background: #fffbe6 !important; }
+
+  /* Selector ring */
+  #p-romelyn:checked ~ .tab-content .selector label[for="p-romelyn"],
+  #p-athena:checked  ~ .tab-content .selector label[for="p-athena"],
+  #p-jessie:checked  ~ .tab-content .selector label[for="p-jessie"],
+  #p-mila:checked    ~ .tab-content .selector label[for="p-mila"] {
+    border-color: var(--car-dot); box-shadow: 0 0 0 2px var(--car-dot);
+  }
+
+  /* ── Team table ── */
+  .team-table {
+    width: 100%; border-collapse: separate; border-spacing: 0;
+    font-size: 0.875rem;
+  }
+  .team-table thead th {
+    padding: 0.6rem 1rem;
+    font-size: 0.7rem; font-weight: 600;
+    letter-spacing: 0.06em; text-transform: uppercase;
+    text-align: left; border-bottom: 2px solid var(--border);
+    background: var(--surface); color: var(--muted);
+  }
+  .team-table thead th.col-parent { color: var(--car-text); background: var(--car-bg); }
+  .team-table tbody tr:not(:last-child) td { border-bottom: 1px solid var(--border); }
+  .team-table td {
+    padding: 0.75rem 1rem; vertical-align: middle;
+  }
+  .team-table tbody tr:hover td { background: var(--bg); }
+
+  .parent-pill {
+    display: inline-flex; align-items: center; gap: 0.35rem;
+    padding: 0.25rem 0.65rem; border-radius: 999px;
+    font-weight: 600; font-size: 0.82rem;
+    background: var(--car-bg); color: var(--car-text);
+  }
+  .parent-pill .dot { width: 6px; height: 6px; border-radius: 50%; background: var(--car-dot); flex-shrink: 0; }
+
+  .child-name { font-weight: 500; font-size: 0.875rem; color: var(--text); }
+  .aunty-name { font-size: 0.875rem; color: var(--muted); }
+  .unknown    { color: var(--border); font-style: italic; font-size: 0.8rem; }
+
+  .footnote {
+    margin-top: 1rem; font-size: 0.78rem;
+    color: var(--muted); padding: 0 0.25rem; line-height: 1.6;
+  }
+  .footnote strong { color: var(--text); }
+  /* ── Calendar accordion ── */
+  .cal-month-accordion {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 14px;
+    overflow: hidden;
+    box-shadow: 0 2px 12px rgba(26,35,50,0.06);
+    margin-bottom: 1rem;
+  }
+
+  .cal-month-toggle {
+    width: 100%;
+    background: none;
+    border: none;
+    padding: 0.9rem 1.25rem;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    cursor: pointer;
+    font-family: inherit;
+    font-size: 0.9rem;
+    font-weight: 600;
+    color: var(--text);
+    text-align: left;
+  }
+
+  .cal-month-toggle .toggle-right {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    font-size: 0.75rem;
+    font-weight: 500;
+    color: var(--muted);
+  }
+
+  .cal-month-toggle .toggle-arrow {
+    font-size: 0.7rem;
+    transition: transform 0.2s;
+    display: inline-block;
+  }
+
+  .cal-month-accordion.collapsed .toggle-arrow {
+    transform: rotate(-90deg);
+  }
+
+  .cal-month-accordion.collapsed .cal-month-body {
+    display: none;
+  }
+
+  .cal-month-body {
+    padding: 0 1.25rem 1.25rem;
+    border-top: 1px solid var(--border);
+  }
+
+  .cal-month-body .cal-month-header {
+    padding-top: 0.85rem;
+  }
+
+  .past-label {
+    font-size: 0.68rem;
+    font-weight: 600;
+    letter-spacing: 0.05em;
+    text-transform: uppercase;
+    color: var(--muted);
+    background: var(--bg);
+    padding: 0.1rem 0.45rem;
+    border-radius: 4px;
+  }
+  .cal-month { margin-bottom: 1.25rem; }
+
+  .cal-month-header {
+    font-size: 0.9rem; font-weight: 600; color: var(--text);
+    margin-bottom: 0.5rem; padding: 0 0.1rem;
+    display: flex; justify-content: space-between; align-items: baseline;
+  }
+  .cal-month-header span {
+    font-size: 0.72rem; font-weight: 500; color: var(--muted);
+  }
+
+  .cal-grid {
+    display: grid; grid-template-columns: repeat(7, 1fr);
+    gap: 2px;
+  }
+
+  .cal-dow {
+    text-align: center; font-size: 0.62rem; font-weight: 600;
+    letter-spacing: 0.05em; text-transform: uppercase;
+    color: var(--muted); padding: 0.2rem 0 0.35rem;
+  }
+  .cal-dow.weekend { color: #b0bec5; }
+
+  .cal-day {
+    aspect-ratio: 1; display: flex; align-items: center; justify-content: center;
+    border-radius: 6px; font-size: 0.78rem; font-weight: 500;
+    position: relative; color: var(--text);
+  }
+  .cal-day.empty { background: none; }
+  .cal-day.normal { background: var(--surface); border: 1px solid var(--border); }
+  .cal-day.weekend-day { background: var(--bg); color: var(--muted); border: 1px solid var(--border); }
+
+  /* Colour categories matching original */
+  .cal-day.school-holiday  { background: #F97316; color: #fff; border: none; } /* orange */
+  .cal-day.public-holiday  { background: #84CC16; color: #fff; border: none; } /* green */
+  .cal-day.prof-learning   { background: #EAB308; color: #fff; border: none; } /* yellow */
+  .cal-day.staff-induction { background: #06B6D4; color: #fff; border: none; } /* cyan */
+  .cal-day.new-teacher     { background: #DC2626; color: #fff; border: none; } /* red */
+  .cal-day.first-last      { background: var(--surface); color: var(--text);
+                              border: 2px solid #06B6D4; font-weight: 700; } /* outlined cyan */
+
+  .cal-legend {
+    display: flex; flex-direction: column; gap: 0.4rem;
+    margin-bottom: 1.25rem;
+  }
+  .cal-legend-row { display: flex; flex-wrap: wrap; gap: 0.5rem; }
+  .cal-legend-item {
+    display: flex; align-items: center; gap: 0.35rem;
+    font-size: 0.72rem; color: var(--muted);
+  }
+  .cal-legend-swatch {
+    width: 12px; height: 12px; border-radius: 3px; flex-shrink: 0;
+  }
+  .cal-legend-swatch.school-holiday  { background: #F97316; }
+  .cal-legend-swatch.public-holiday  { background: #84CC16; }
+  .cal-legend-swatch.prof-learning   { background: #EAB308; }
+  .cal-legend-swatch.staff-induction { background: #06B6D4; }
+  .cal-legend-swatch.new-teacher     { background: #DC2626; }
+  .cal-legend-swatch.first-last      { background: var(--surface); border: 2px solid #06B6D4; }
+
+  .cal-events {
+    margin-top: 0.5rem;
+    display: flex; flex-direction: column; gap: 0.3rem;
+  }
+  .cal-event {
+    font-size: 0.75rem; color: var(--muted); line-height: 1.4;
+    padding-left: 0.6rem; border-left: 2px solid var(--border);
+  }
+  .cal-event strong { color: var(--text); font-weight: 600; }
+</style>
+</head>
+<body>
+<div class="page">
+
+  <header>
+    <div class="bus-icon">🚌</div>
+    <div>
+      <h1>Caribbean Bus Rota</h1>
+      <p>School run handbook · Caribbean Condo · Dulwich College DUCKS</p>
+    </div>
+  </header>
+
+  <!-- Tab radios -->
+  <input class="tab-radio" type="radio" name="tab" id="tab-rota"  checked>
+  <input class="tab-radio" type="radio" name="tab" id="tab-times">
+  <input class="tab-radio" type="radio" name="tab" id="tab-route">
+  <input class="tab-radio" type="radio" name="tab" id="tab-rules">
+  <input class="tab-radio" type="radio" name="tab" id="tab-cal">
+  <input class="tab-radio" type="radio" name="tab" id="tab-team">
+
+  <!-- Parent highlight radios -->
+  <input class="parent-radio" type="radio" name="parent" id="p-all" checked>
+  <input class="parent-radio" type="radio" name="parent" id="p-romelyn">
+  <input class="parent-radio" type="radio" name="parent" id="p-athena">
+  <input class="parent-radio" type="radio" name="parent" id="p-jessie">
+  <input class="parent-radio" type="radio" name="parent" id="p-mila">
+
+  <div class="tab-bar">
+    <label for="tab-rota">📅 Rota</label>
+    <label for="tab-team">👪 Team</label>
+    <label for="tab-times">⏰ Times</label>
+    <label for="tab-route">🗺️ Route</label>
+    <label for="tab-rules">📋 Rules</label>
+    <label for="tab-cal">🗓️ Cal</label>
+  </div>
+
+  <div class="tab-content">
+
+    <!-- ══ ROTA TAB ══ -->
+    <div class="tab-panel" id="panel-rota">
+      <p class="hint-bar">Tap a name to highlight their shifts.</p>
+      <div class="selector">
+        <div class="selector-row">
+          <label for="p-romelyn" class="car"><span class="dot"></span>Romelyn</label>
+          <label for="p-athena"  class="car"><span class="dot"></span>Athena</label>
+          <label for="p-jessie"  class="car"><span class="dot"></span>Jessie</label>
+          <label for="p-mila"    class="car"><span class="dot"></span>Mila</label>
+        </div>
+        <div class="selector-row">
+          <label for="p-all" class="show-all">✕ Show all</label>
+        </div>
+      </div>
+      <div id="rota-table-wrap"></div>
+      <p class="footnote"><strong>18–21 Aug: introductory week</strong> (Tue–Fri only). Rolling two-week pattern repeats from 8 Sep. Athena is assigned afternoons only.</p>
+    </div>
+
+    <!-- ══ TIMES TAB ══ -->
+    <div class="tab-panel" id="panel-times">
+      <div class="card">
+        <div class="am-pm-label am">Morning</div>
+        <div class="timeline">
+          <div class="tl-row">
+            <div class="tl-time">7:30</div>
+            <div class="tl-left"><div class="tl-dot bus"></div><div class="tl-line"></div></div>
+            <div class="tl-body">
+              <div class="tl-title">Meet at Clubhouse</div>
+              <div class="tl-desc">Helpers and children gather at the Caribbean Condo clubhouse</div>
+            </div>
+          </div>
+          <div class="tl-row">
+            <div class="tl-time">7:40</div>
+            <div class="tl-left"><div class="tl-dot am"></div><div class="tl-line"></div></div>
+            <div class="tl-body">
+              <div class="tl-title">School bus departs</div>
+              <div class="tl-desc">Bus picks up from Caribbean Condo clubhouse</div>
+            </div>
+          </div>
+          <div class="tl-row">
+            <div class="tl-time">~8:10</div>
+            <div class="tl-left"><div class="tl-dot am"></div><div class="tl-line"></div></div>
+            <div class="tl-body">
+              <div class="tl-title">Arrive at Dulwich DUCKS</div>
+              <div class="tl-desc">Children dropped at school entrance</div>
+            </div>
+          </div>
+          <div class="tl-row">
+            <div class="tl-time">8:30</div>
+            <div class="tl-left"><div class="tl-dot bus"></div></div>
+            <div class="tl-body">
+              <div class="tl-title">Helper dropped at bus stop</div>
+              <div class="tl-desc">Bus drops helper at the 97 bus stop after school drop-off</div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="am-pm-label pm">Afternoon</div>
+        <div class="timeline">
+          <div class="tl-row">
+            <div class="tl-time">3:10</div>
+            <div class="tl-left"><div class="tl-dot pm"></div><div class="tl-line"></div></div>
+            <div class="tl-body">
+              <div class="tl-title">Arrive at DUCKS Building</div>
+              <div class="tl-desc">Helper makes their own way to school and arrives at the DUCKS building</div>
+            </div>
+          </div>
+          <div class="tl-row">
+            <div class="tl-time">3:20</div>
+            <div class="tl-left"><div class="tl-dot pm"></div><div class="tl-line"></div></div>
+            <div class="tl-body">
+              <div class="tl-title">DUCKS kids finish</div>
+              <div class="tl-desc">Collect the DUCKS children and walk together to the PAC Building</div>
+            </div>
+          </div>
+          <div class="tl-row">
+            <div class="tl-time">3:30</div>
+            <div class="tl-left"><div class="tl-dot pm"></div><div class="tl-line"></div></div>
+            <div class="tl-body">
+              <div class="tl-title">Rory &amp; Saria finish at PAC</div>
+              <div class="tl-desc">Wait at PAC Building until all children are collected</div>
+            </div>
+          </div>
+          <div class="tl-row">
+            <div class="tl-time">3:30+</div>
+            <div class="tl-left"><div class="tl-dot bus"></div><div class="tl-line"></div></div>
+            <div class="tl-body">
+              <div class="tl-title">Call school bus</div>
+              <div class="tl-desc">Once all kids are with you, message the WhatsApp group to call the bus</div>
+            </div>
+          </div>
+          <div class="tl-row">
+            <div class="tl-time">~3:40</div>
+            <div class="tl-left"><div class="tl-dot pm"></div><div class="tl-line"></div></div>
+            <div class="tl-body">
+              <div class="tl-title">Board school bus</div>
+              <div class="tl-desc">Aim to depart school around 3:40pm</div>
+            </div>
+          </div>
+          <div class="tl-row">
+            <div class="tl-time">~4:10</div>
+            <div class="tl-left"><div class="tl-dot pm"></div></div>
+            <div class="tl-body">
+              <div class="tl-title">Arrive at Caribbean Condo</div>
+              <div class="tl-desc">Bus drops children and helper back at the clubhouse</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ══ ROUTE TAB ══ -->
+    <div class="tab-panel" id="panel-route">
+      <div class="card">
+        <h2>Key Locations</h2>
+        <div class="location-list">
+
+          <a class="location-item" href="https://maps.app.goo.gl/Caribbean-Condo-Singapore" target="_blank"
+             onclick="this.href='https://www.google.com/maps/search/Caribbean+at+Keppel+Bay+Singapore'">
+            <div class="loc-icon">🏠</div>
+            <div class="loc-body">
+              <div class="loc-name">Caribbean at Keppel Bay</div>
+              <div class="loc-desc">Pickup &amp; drop-off point · Clubhouse entrance · 7:40am / ~4:10pm</div>
+              <div class="loc-link">Open in Google Maps <span class="loc-arrow">↗</span></div>
+            </div>
+          </a>
+
+          <a class="location-item" href="https://www.google.com/maps/search/Dulwich+College+Singapore+DUCKS" target="_blank">
+            <div class="loc-icon">🏫</div>
+            <div class="loc-body">
+              <div class="loc-name">Dulwich College Singapore — DUCKS</div>
+              <div class="loc-desc">71 Bukit Batok West Ave 8 · Arrive ~8:10am · DUCKS finish 3:20pm</div>
+              <div class="loc-link">Open in Google Maps <span class="loc-arrow">↗</span></div>
+            </div>
+          </a>
+
+          <a class="location-item" href="https://maps.app.goo.gl/PbqnbMQzadbGxco59?g_st=ac" target="_blank">
+            <div class="loc-icon">🚏</div>
+            <div class="loc-body">
+              <div class="loc-name">Bus 97 Stop</div>
+              <div class="loc-desc">Helper dropped here at 8:30am after morning run · Make own way to school by 3:10pm for afternoon</div>
+              <div class="loc-link">Open in Google Maps <span class="loc-arrow">↗</span></div>
+            </div>
+          </a>
+
+        </div>
+      </div>
+
+      <div class="card">
+        <h2>Morning Route</h2>
+        <a class="location-item" href="https://www.google.com/maps/dir/Caribbean+at+Keppel+Bay/Dulwich+College+Singapore" target="_blank">
+          <div class="loc-icon">☀️</div>
+          <div class="loc-body">
+            <div class="loc-name">Caribbean Condo → Dulwich DUCKS</div>
+            <div class="loc-desc">Departs 7:40am · ~30 min journey</div>
+            <div class="loc-link">Get directions ↗</div>
+          </div>
+        </a>
+      </div>
+
+      <div class="card">
+        <h2>Afternoon Route</h2>
+        <a class="location-item" href="https://www.google.com/maps/dir/Dulwich+College+Singapore/Caribbean+at+Keppel+Bay" target="_blank">
+          <div class="loc-icon">🌆</div>
+          <div class="loc-body">
+            <div class="loc-name">Dulwich DUCKS → Caribbean Condo</div>
+            <div class="loc-desc">Departs school ~3:40pm · ~30 min journey</div>
+            <div class="loc-link">Get directions ↗</div>
+          </div>
+        </a>
+      </div>
+    </div>
+
+    <!-- ══ RULES TAB ══ -->
+    <div class="tab-panel" id="panel-rules">
+      <div class="card">
+        <h2>How it works</h2>
+        <div class="rules-list">
+          <div class="rule-item">
+            <div class="rule-icon">👥</div>
+            <div class="rule-text">
+              <strong>One helper per journey</strong>
+              One Caribbean helper accompanies the children on each morning and afternoon run.
+            </div>
+          </div>
+          <div class="rule-item">
+            <div class="rule-icon">📆</div>
+            <div class="rule-text">
+              <strong>Helper schedule</strong>
+              Each helper does 5 shifts per fortnight. Athena only does afternoon pickups, the other helpers rotate.
+            </div>
+          </div>
+          <div class="rule-item">
+            <div class="rule-icon">🎒</div>
+            <div class="rule-text">
+              <strong>Equipment</strong>
+              Remember to bring the school bags and Ridesafer vests.
+            </div>
+          </div>
+          <div class="rule-item">
+            <div class="rule-icon">☀️</div>
+            <div class="rule-text">
+              <strong>Morning pickup: 7:40am</strong>
+              Be at the Caribbean Condo clubhouse by 7:30am. Bus departs at 7:40am sharp.
+            </div>
+          </div>
+          <div class="rule-item">
+            <div class="rule-icon">🚌</div>
+            <div class="rule-text">
+              <strong>Bus 97 for helpers</strong>
+              After morning drop-off you are dropped at the 97 bus stop around 8:30am. Live departures can be found <a href="https://citymapper.com/singapore/d/dulwich-collblk-445" target="_blank" style="color:var(--car-text);font-weight:600;">here</a>.<br><br>
+              Make your own way back to school by 3:10pm for afternoon shifts.
+            </div>
+          </div>
+          <div class="rule-item">
+            <div class="rule-icon">🌆</div>
+            <div class="rule-text">
+              <strong>Afternoon collection: from 3:10pm</strong>
+              Make your own way to DUCKS by 3:10pm. Collect DUCKS kids at 3:20pm, walk to PAC Building and wait for Rory &amp; Saria at 3:30pm. Once all kids collected, call the bus via WhatsApp. Aim to leave ~3:40pm, back at condo ~4:10pm.
+            </div>
+          </div>
+          <div class="rule-item">
+            <div class="rule-icon">🔄</div>
+            <div class="rule-text">
+              <strong>Swaps</strong>
+              If you can't make your shift, please arrange a swap with another helper and let the group know 24 hours in advance.
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ══ TEAM TAB ══ -->
+    <div class="tab-panel" id="panel-team">
+      <div class="card">
+        <h2>The Team</h2>
+        <div class="table-wrap">
+          <table class="team-table">
+            <thead>
+              <tr>
+                <th class="col-parent">Parent</th>
+                <th>Child</th>
+                <th>Aunty</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td><span class="parent-pill"><span class="dot"></span>Amanda</span></td>
+                <td><span class="child-name">Rory &amp; Saria</span></td>
+                <td><span class="aunty-name">Mila</span></td>
+              </tr>
+              <tr>
+                <td><span class="parent-pill"><span class="dot"></span>Ayla</span></td>
+                <td><span class="child-name">Sofia</span></td>
+                <td><span class="aunty-name">Jessie</span></td>
+              </tr>
+              <tr>
+                <td><span class="parent-pill"><span class="dot"></span>Jin</span></td>
+                <td><span class="child-name">Benji</span></td>
+                <td><span class="aunty-name">Romelyn</span></td>
+              </tr>
+              <tr>
+                <td><span class="parent-pill"><span class="dot"></span>Shivali</span></td>
+                <td><span class="child-name">Jahan</span></td>
+                <td><span class="aunty-name">Athena</span></td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+
+      </div>
+    </div>
+
+    <!-- ══ CALENDAR TAB ══ -->
+    <div class="tab-panel" id="panel-cal">
+
+      <!-- Legend -->
+      <div class="card">
+        <h2>Key</h2>
+        <div class="cal-legend">
+          <div class="cal-legend-row">
+            <div class="cal-legend-item"><div class="cal-legend-swatch first-last"></div>First/Last Day of Term</div>
+            <div class="cal-legend-item"><div class="cal-legend-swatch public-holiday"></div>Public Holiday</div>
+            <div class="cal-legend-item"><div class="cal-legend-swatch school-holiday"></div>School Holiday</div>
+          </div>
+          <div class="cal-legend-row">
+            <div class="cal-legend-item"><div class="cal-legend-swatch prof-learning"></div>Professional Learning Day</div>
+            <div class="cal-legend-item"><div class="cal-legend-swatch staff-induction"></div>Staff Induction</div>
+            <div class="cal-legend-item"><div class="cal-legend-swatch new-teacher"></div>New Teacher Induction</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- August 2026 -->
+      <div class="card">
+        <div class="cal-month-header">August 2026 <span>Term 1 begins</span></div>
+        <div class="cal-grid">
+          <div class="cal-dow">M</div><div class="cal-dow">T</div><div class="cal-dow">W</div><div class="cal-dow">T</div><div class="cal-dow">F</div><div class="cal-dow weekend">S</div><div class="cal-dow weekend">S</div>
+          <!-- Aug: starts on Saturday -->
+          <div class="cal-day empty"></div><div class="cal-day empty"></div><div class="cal-day empty"></div><div class="cal-day empty"></div><div class="cal-day empty"></div><div class="cal-day weekend-day">1</div><div class="cal-day weekend-day">2</div>
+          <div class="cal-day school-holiday">3</div><div class="cal-day school-holiday">4</div><div class="cal-day school-holiday">5</div><div class="cal-day school-holiday">6</div><div class="cal-day school-holiday">7</div><div class="cal-day weekend-day">8</div><div class="cal-day public-holiday">9</div>
+          <div class="cal-day public-holiday">10</div><div class="cal-day school-holiday">11</div><div class="cal-day staff-induction">12</div><div class="cal-day staff-induction">13</div><div class="cal-day staff-induction">14</div><div class="cal-day weekend-day">15</div><div class="cal-day weekend-day">16</div>
+          <div class="cal-day staff-induction">17</div><div class="cal-day first-last">18</div><div class="cal-day normal">19</div><div class="cal-day normal">20</div><div class="cal-day normal">21</div><div class="cal-day weekend-day">22</div><div class="cal-day weekend-day">23</div>
+          <div class="cal-day normal">24</div><div class="cal-day normal">25</div><div class="cal-day normal">26</div><div class="cal-day normal">27</div><div class="cal-day normal">28</div><div class="cal-day weekend-day">29</div><div class="cal-day weekend-day">30</div>
+          <div class="cal-day normal">31</div>
+        </div>
+        <div class="cal-events">
+          <div class="cal-event"><strong>3–17 Aug:</strong> School Holiday</div>
+          <div class="cal-event"><strong>9–10 Aug:</strong> National Day Public Holidays</div>
+          <div class="cal-event"><strong>7, 11 Aug:</strong> New Staff Induction</div>
+          <div class="cal-event"><strong>12–14, 17 Aug:</strong> All Staff Induction</div>
+          <div class="cal-event"><strong>18 Aug:</strong> First Day of Michaelmas Term</div>
+        </div>
+      </div>
+
+      <!-- September 2026 -->
+      <div class="card">
+        <div class="cal-month-header">September 2026</div>
+        <div class="cal-grid">
+          <div class="cal-dow">M</div><div class="cal-dow">T</div><div class="cal-dow">W</div><div class="cal-dow">T</div><div class="cal-dow">F</div><div class="cal-dow weekend">S</div><div class="cal-dow weekend">S</div>
+          <div class="cal-day empty"></div><div class="cal-day normal">1</div><div class="cal-day normal">2</div><div class="cal-day normal">3</div><div class="cal-day normal">4</div><div class="cal-day weekend-day">5</div><div class="cal-day weekend-day">6</div>
+          <div class="cal-day normal">7</div><div class="cal-day normal">8</div><div class="cal-day normal">9</div><div class="cal-day normal">10</div><div class="cal-day normal">11</div><div class="cal-day weekend-day">12</div><div class="cal-day weekend-day">13</div>
+          <div class="cal-day normal">14</div><div class="cal-day normal">15</div><div class="cal-day normal">16</div><div class="cal-day normal">17</div><div class="cal-day normal">18</div><div class="cal-day weekend-day">19</div><div class="cal-day weekend-day">20</div>
+          <div class="cal-day normal">21</div><div class="cal-day normal">22</div><div class="cal-day normal">23</div><div class="cal-day normal">24</div><div class="cal-day normal">25</div><div class="cal-day weekend-day">26</div><div class="cal-day weekend-day">27</div>
+          <div class="cal-day normal">28</div><div class="cal-day normal">29</div><div class="cal-day normal">30</div>
+        </div>
+      </div>
+
+      <!-- October 2026 -->
+      <div class="card">
+        <div class="cal-month-header">October 2026 <span>Half-term</span></div>
+        <div class="cal-grid">
+          <div class="cal-dow">M</div><div class="cal-dow">T</div><div class="cal-dow">W</div><div class="cal-dow">T</div><div class="cal-dow">F</div><div class="cal-dow weekend">S</div><div class="cal-dow weekend">S</div>
+          <div class="cal-day empty"></div><div class="cal-day empty"></div><div class="cal-day empty"></div><div class="cal-day normal">1</div><div class="cal-day normal">2</div><div class="cal-day weekend-day">3</div><div class="cal-day weekend-day">4</div>
+          <div class="cal-day normal">5</div><div class="cal-day normal">6</div><div class="cal-day normal">7</div><div class="cal-day normal">8</div><div class="cal-day normal">9</div><div class="cal-day weekend-day">10</div><div class="cal-day weekend-day">11</div>
+          <div class="cal-day school-holiday">12</div><div class="cal-day school-holiday">13</div><div class="cal-day school-holiday">14</div><div class="cal-day school-holiday">15</div><div class="cal-day school-holiday">16</div><div class="cal-day weekend-day">17</div><div class="cal-day weekend-day">18</div>
+          <div class="cal-day normal">19</div><div class="cal-day normal">20</div><div class="cal-day normal">21</div><div class="cal-day normal">22</div><div class="cal-day normal">23</div><div class="cal-day weekend-day">24</div><div class="cal-day weekend-day">25</div>
+          <div class="cal-day normal">26</div><div class="cal-day normal">27</div><div class="cal-day normal">28</div><div class="cal-day normal">29</div><div class="cal-day normal">30</div><div class="cal-day weekend-day">31</div>
+        </div>
+        <div class="cal-events">
+          <div class="cal-event"><strong>12–16 Oct:</strong> Half-Term Holiday</div>
+        </div>
+      </div>
+
+      <!-- November 2026 -->
+      <div class="card">
+        <div class="cal-month-header">November 2026</div>
+        <div class="cal-grid">
+          <div class="cal-dow">M</div><div class="cal-dow">T</div><div class="cal-dow">W</div><div class="cal-dow">T</div><div class="cal-dow">F</div><div class="cal-dow weekend">S</div><div class="cal-dow weekend">S</div>
+          <div class="cal-day empty"></div><div class="cal-day empty"></div><div class="cal-day empty"></div><div class="cal-day empty"></div><div class="cal-day empty"></div><div class="cal-day empty"></div><div class="cal-day weekend-day">1</div>
+          <div class="cal-day normal">2</div><div class="cal-day normal">3</div><div class="cal-day normal">4</div><div class="cal-day normal">5</div><div class="cal-day prof-learning">6</div><div class="cal-day weekend-day">7</div><div class="cal-day public-holiday">8</div>
+          <div class="cal-day public-holiday">9</div><div class="cal-day prof-learning">10</div><div class="cal-day normal">11</div><div class="cal-day normal">12</div><div class="cal-day normal">13</div><div class="cal-day weekend-day">14</div><div class="cal-day weekend-day">15</div>
+          <div class="cal-day normal">16</div><div class="cal-day normal">17</div><div class="cal-day normal">18</div><div class="cal-day normal">19</div><div class="cal-day normal">20</div><div class="cal-day weekend-day">21</div><div class="cal-day weekend-day">22</div>
+          <div class="cal-day normal">23</div><div class="cal-day normal">24</div><div class="cal-day normal">25</div><div class="cal-day normal">26</div><div class="cal-day normal">27</div><div class="cal-day weekend-day">28</div><div class="cal-day weekend-day">29</div>
+          <div class="cal-day normal">30</div>
+        </div>
+        <div class="cal-events">
+          <div class="cal-event"><strong>6, 10 Nov:</strong> Professional Learning Days</div>
+          <div class="cal-event"><strong>8–9 Nov:</strong> Deepavali Public Holiday</div>
+        </div>
+      </div>
+
+      <!-- December 2026 -->
+      <div class="card">
+        <div class="cal-month-header">December 2026 <span>Michaelmas ends</span></div>
+        <div class="cal-grid">
+          <div class="cal-dow">M</div><div class="cal-dow">T</div><div class="cal-dow">W</div><div class="cal-dow">T</div><div class="cal-dow">F</div><div class="cal-dow weekend">S</div><div class="cal-dow weekend">S</div>
+          <div class="cal-day empty"></div><div class="cal-day normal">1</div><div class="cal-day normal">2</div><div class="cal-day normal">3</div><div class="cal-day normal">4</div><div class="cal-day weekend-day">5</div><div class="cal-day weekend-day">6</div>
+          <div class="cal-day normal">7</div><div class="cal-day normal">8</div><div class="cal-day normal">9</div><div class="cal-day normal">10</div><div class="cal-day first-last">11</div><div class="cal-day weekend-day">12</div><div class="cal-day weekend-day">13</div>
+          <div class="cal-day school-holiday">14</div><div class="cal-day school-holiday">15</div><div class="cal-day school-holiday">16</div><div class="cal-day school-holiday">17</div><div class="cal-day school-holiday">18</div><div class="cal-day weekend-day">19</div><div class="cal-day weekend-day">20</div>
+          <div class="cal-day school-holiday">21</div><div class="cal-day school-holiday">22</div><div class="cal-day school-holiday">23</div><div class="cal-day school-holiday">24</div><div class="cal-day public-holiday">25</div><div class="cal-day weekend-day">26</div><div class="cal-day weekend-day">27</div>
+          <div class="cal-day school-holiday">28</div><div class="cal-day school-holiday">29</div><div class="cal-day school-holiday">30</div><div class="cal-day school-holiday">31</div>
+        </div>
+        <div class="cal-events">
+          <div class="cal-event"><strong>11 Dec:</strong> Last Day of Michaelmas Term (half day)</div>
+          <div class="cal-event"><strong>14 Dec – 4 Jan:</strong> Christmas Holiday</div>
+          <div class="cal-event"><strong>25 Dec:</strong> Christmas Day Public Holiday</div>
+        </div>
+      </div>
+
+      <!-- January 2027 -->
+      <div class="card">
+        <div class="cal-month-header">January 2027 <span>Lent term begins</span></div>
+        <div class="cal-grid">
+          <div class="cal-dow">M</div><div class="cal-dow">T</div><div class="cal-dow">W</div><div class="cal-dow">T</div><div class="cal-dow">F</div><div class="cal-dow weekend">S</div><div class="cal-dow weekend">S</div>
+          <div class="cal-day empty"></div><div class="cal-day empty"></div><div class="cal-day empty"></div><div class="cal-day empty"></div><div class="cal-day public-holiday">1</div><div class="cal-day weekend-day">2</div><div class="cal-day weekend-day">3</div>
+          <div class="cal-day prof-learning">4</div><div class="cal-day first-last">5</div><div class="cal-day normal">6</div><div class="cal-day normal">7</div><div class="cal-day normal">8</div><div class="cal-day weekend-day">9</div><div class="cal-day weekend-day">10</div>
+          <div class="cal-day normal">11</div><div class="cal-day normal">12</div><div class="cal-day normal">13</div><div class="cal-day normal">14</div><div class="cal-day normal">15</div><div class="cal-day weekend-day">16</div><div class="cal-day weekend-day">17</div>
+          <div class="cal-day normal">18</div><div class="cal-day normal">19</div><div class="cal-day normal">20</div><div class="cal-day normal">21</div><div class="cal-day normal">22</div><div class="cal-day weekend-day">23</div><div class="cal-day weekend-day">24</div>
+          <div class="cal-day normal">25</div><div class="cal-day normal">26</div><div class="cal-day normal">27</div><div class="cal-day normal">28</div><div class="cal-day normal">29</div><div class="cal-day weekend-day">30</div><div class="cal-day weekend-day">31</div>
+        </div>
+        <div class="cal-events">
+          <div class="cal-event"><strong>1 Jan:</strong> New Year's Day Public Holiday</div>
+          <div class="cal-event"><strong>4 Jan:</strong> Professional Learning Day</div>
+          <div class="cal-event"><strong>5 Jan:</strong> First Day of Lent Term</div>
+        </div>
+      </div>
+
+      <!-- February 2027 -->
+      <div class="card">
+        <div class="cal-month-header">February 2027</div>
+        <div class="cal-grid">
+          <div class="cal-dow">M</div><div class="cal-dow">T</div><div class="cal-dow">W</div><div class="cal-dow">T</div><div class="cal-dow">F</div><div class="cal-dow weekend">S</div><div class="cal-dow weekend">S</div>
+          <div class="cal-day normal">1</div><div class="cal-day normal">2</div><div class="cal-day normal">3</div><div class="cal-day normal">4</div><div class="cal-day normal">5</div><div class="cal-day public-holiday">6</div><div class="cal-day weekend-day">7</div>
+          <div class="cal-day public-holiday">8</div><div class="cal-day school-holiday">9</div><div class="cal-day school-holiday">10</div><div class="cal-day school-holiday">11</div><div class="cal-day school-holiday">12</div><div class="cal-day weekend-day">13</div><div class="cal-day weekend-day">14</div>
+          <div class="cal-day normal">15</div><div class="cal-day normal">16</div><div class="cal-day normal">17</div><div class="cal-day normal">18</div><div class="cal-day normal">19</div><div class="cal-day weekend-day">20</div><div class="cal-day weekend-day">21</div>
+          <div class="cal-day normal">22</div><div class="cal-day normal">23</div><div class="cal-day normal">24</div><div class="cal-day normal">25</div><div class="cal-day normal">26</div><div class="cal-day weekend-day">27</div><div class="cal-day weekend-day">28</div>
+        </div>
+        <div class="cal-events">
+          <div class="cal-event"><strong>5 Feb:</strong> Half Day of School</div>
+          <div class="cal-event"><strong>6, 8 Feb:</strong> Lunar New Year Public Holidays</div>
+          <div class="cal-event"><strong>8–12 Feb:</strong> School Holiday</div>
+        </div>
+      </div>
+
+      <!-- March 2027 -->
+      <div class="card">
+        <div class="cal-month-header">March 2027 <span>Lent term ends</span></div>
+        <div class="cal-grid">
+          <div class="cal-dow">M</div><div class="cal-dow">T</div><div class="cal-dow">W</div><div class="cal-dow">T</div><div class="cal-dow">F</div><div class="cal-dow weekend">S</div><div class="cal-dow weekend">S</div>
+          <div class="cal-day normal">1</div><div class="cal-day normal">2</div><div class="cal-day normal">3</div><div class="cal-day normal">4</div><div class="cal-day normal">5</div><div class="cal-day weekend-day">6</div><div class="cal-day weekend-day">7</div>
+          <div class="cal-day normal">8</div><div class="cal-day normal">9</div><div class="cal-day public-holiday">10</div><div class="cal-day normal">11</div><div class="cal-day normal">12</div><div class="cal-day weekend-day">13</div><div class="cal-day weekend-day">14</div>
+          <div class="cal-day normal">15</div><div class="cal-day normal">16</div><div class="cal-day normal">17</div><div class="cal-day normal">18</div><div class="cal-day normal">19</div><div class="cal-day weekend-day">20</div><div class="cal-day weekend-day">21</div>
+          <div class="cal-day normal">22</div><div class="cal-day normal">23</div><div class="cal-day normal">24</div><div class="cal-day first-last">25</div><div class="cal-day public-holiday">26</div><div class="cal-day weekend-day">27</div><div class="cal-day weekend-day">28</div>
+          <div class="cal-day school-holiday">29</div><div class="cal-day school-holiday">30</div><div class="cal-day school-holiday">31</div>
+        </div>
+        <div class="cal-events">
+          <div class="cal-event"><strong>10 Mar:</strong> Hari Raya Public Holiday</div>
+          <div class="cal-event"><strong>25 Mar:</strong> Last Day of Lent Term (half day)</div>
+          <div class="cal-event"><strong>26 Mar:</strong> Good Friday Public Holiday</div>
+          <div class="cal-event"><strong>29 Mar – 9 Apr:</strong> Easter Holiday</div>
+        </div>
+      </div>
+
+      <!-- April 2027 -->
+      <div class="card">
+        <div class="cal-month-header">April 2027 <span>Trinity term begins</span></div>
+        <div class="cal-grid">
+          <div class="cal-dow">M</div><div class="cal-dow">T</div><div class="cal-dow">W</div><div class="cal-dow">T</div><div class="cal-dow">F</div><div class="cal-dow weekend">S</div><div class="cal-dow weekend">S</div>
+          <div class="cal-day empty"></div><div class="cal-day empty"></div><div class="cal-day empty"></div><div class="cal-day school-holiday">1</div><div class="cal-day school-holiday">2</div><div class="cal-day weekend-day">3</div><div class="cal-day weekend-day">4</div>
+          <div class="cal-day school-holiday">5</div><div class="cal-day school-holiday">6</div><div class="cal-day school-holiday">7</div><div class="cal-day school-holiday">8</div><div class="cal-day school-holiday">9</div><div class="cal-day weekend-day">10</div><div class="cal-day weekend-day">11</div>
+          <div class="cal-day first-last">12</div><div class="cal-day normal">13</div><div class="cal-day normal">14</div><div class="cal-day normal">15</div><div class="cal-day normal">16</div><div class="cal-day weekend-day">17</div><div class="cal-day weekend-day">18</div>
+          <div class="cal-day normal">19</div><div class="cal-day normal">20</div><div class="cal-day normal">21</div><div class="cal-day normal">22</div><div class="cal-day normal">23</div><div class="cal-day weekend-day">24</div><div class="cal-day weekend-day">25</div>
+          <div class="cal-day normal">26</div><div class="cal-day normal">27</div><div class="cal-day normal">28</div><div class="cal-day normal">29</div><div class="cal-day normal">30</div>
+        </div>
+        <div class="cal-events">
+          <div class="cal-event"><strong>12 Apr:</strong> First Day of Trinity Term</div>
+        </div>
+      </div>
+
+      <!-- May 2027 -->
+      <div class="card">
+        <div class="cal-month-header">May 2027</div>
+        <div class="cal-grid">
+          <div class="cal-dow">M</div><div class="cal-dow">T</div><div class="cal-dow">W</div><div class="cal-dow">T</div><div class="cal-dow">F</div><div class="cal-dow weekend">S</div><div class="cal-dow weekend">S</div>
+          <div class="cal-day empty"></div><div class="cal-day empty"></div><div class="cal-day empty"></div><div class="cal-day empty"></div><div class="cal-day empty"></div><div class="cal-day public-holiday">1</div><div class="cal-day weekend-day">2</div>
+          <div class="cal-day normal">3</div><div class="cal-day normal">4</div><div class="cal-day normal">5</div><div class="cal-day normal">6</div><div class="cal-day normal">7</div><div class="cal-day weekend-day">8</div><div class="cal-day weekend-day">9</div>
+          <div class="cal-day normal">10</div><div class="cal-day normal">11</div><div class="cal-day normal">12</div><div class="cal-day normal">13</div><div class="cal-day normal">14</div><div class="cal-day weekend-day">15</div><div class="cal-day weekend-day">16</div>
+          <div class="cal-day public-holiday">17</div><div class="cal-day normal">18</div><div class="cal-day normal">19</div><div class="cal-day public-holiday">20</div><div class="cal-day normal">21</div><div class="cal-day weekend-day">22</div><div class="cal-day weekend-day">23</div>
+          <div class="cal-day normal">24</div><div class="cal-day normal">25</div><div class="cal-day normal">26</div><div class="cal-day normal">27</div><div class="cal-day normal">28</div><div class="cal-day weekend-day">29</div><div class="cal-day weekend-day">30</div>
+          <div class="cal-day normal">31</div>
+        </div>
+        <div class="cal-events">
+          <div class="cal-event"><strong>1 May:</strong> Labour Day Public Holiday</div>
+          <div class="cal-event"><strong>17 May:</strong> Hari Raya Haji Public Holiday</div>
+          <div class="cal-event"><strong>20 May:</strong> Vesak Day Public Holiday</div>
+        </div>
+      </div>
+
+      <!-- June 2027 -->
+      <div class="card">
+        <div class="cal-month-header">June 2027 <span>Trinity term ends</span></div>
+        <div class="cal-grid">
+          <div class="cal-dow">M</div><div class="cal-dow">T</div><div class="cal-dow">W</div><div class="cal-dow">T</div><div class="cal-dow">F</div><div class="cal-dow weekend">S</div><div class="cal-dow weekend">S</div>
+          <div class="cal-day empty"></div><div class="cal-day normal">1</div><div class="cal-day normal">2</div><div class="cal-day normal">3</div><div class="cal-day normal">4</div><div class="cal-day weekend-day">5</div><div class="cal-day weekend-day">6</div>
+          <div class="cal-day normal">7</div><div class="cal-day normal">8</div><div class="cal-day normal">9</div><div class="cal-day normal">10</div><div class="cal-day normal">11</div><div class="cal-day weekend-day">12</div><div class="cal-day weekend-day">13</div>
+          <div class="cal-day normal">14</div><div class="cal-day normal">15</div><div class="cal-day normal">16</div><div class="cal-day normal">17</div><div class="cal-day normal">18</div><div class="cal-day weekend-day">19</div><div class="cal-day weekend-day">20</div>
+          <div class="cal-day normal">21</div><div class="cal-day normal">22</div><div class="cal-day normal">23</div><div class="cal-day normal">24</div><div class="cal-day first-last">25</div><div class="cal-day weekend-day">26</div><div class="cal-day weekend-day">27</div>
+          <div class="cal-day school-holiday">28</div><div class="cal-day school-holiday">29</div><div class="cal-day school-holiday">30</div>
+        </div>
+        <div class="cal-events">
+          <div class="cal-event"><strong>25 Jun:</strong> Last Day of Trinity Term (half day)</div>
+        </div>
+      </div>
+
+    </div><!-- end panel-cal -->
+
+  </div><!-- end .tab-content -->
+</div>
+<script>
+(function() {
+
+  // ── No-school dates (public holidays, half-terms, teacher training) ──
+  const NO_SCHOOL = new Set([
+    // October half term
+    '2026-10-12','2026-10-13','2026-10-14','2026-10-15','2026-10-16',
+    // November professional learning days (no children)
+    '2026-11-06','2026-11-10',
+    // Christmas holiday (14 Dec – 4 Jan), inc. Christmas Day
+    '2026-12-14','2026-12-15','2026-12-16','2026-12-17','2026-12-18',
+    '2026-12-21','2026-12-22','2026-12-23','2026-12-24','2026-12-25',
+    '2026-12-28','2026-12-29','2026-12-30','2026-12-31',
+    '2027-01-01', // New Year's Day
+    '2027-01-04', // Professional learning day
+    // Lunar New Year & school holiday
+    '2027-02-08','2027-02-09','2027-02-10','2027-02-11','2027-02-12',
+    // Hari Raya
+    '2027-03-10',
+    // Good Friday & Easter holiday
+    '2027-03-26',
+    '2027-03-29','2027-03-30','2027-03-31',
+    '2027-04-01','2027-04-02',
+    '2027-04-05','2027-04-06','2027-04-07','2027-04-08','2027-04-09',
+    // Hari Raya Haji & Vesak Day
+    '2027-05-17','2027-05-20',
+  ]);
+
+  function isoDate(d) {
+    return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+  }
+
+  function isNoSchool(d) {
+    return NO_SCHOOL.has(isoDate(d));
+  }
+
+  // ── Schedule data ──────────────────────────────────────────────
+  // Intro week: fixed Tue-Fri 18-21 Aug 2026
+  const INTRO = [
+    { date: new Date(2026, 7, 18), dayName: 'Tue', am: 'romelyn', pm: 'romelyn' },
+    { date: new Date(2026, 7, 19), dayName: 'Wed', am: 'athena',  pm: 'athena'  },
+    { date: new Date(2026, 7, 20), dayName: 'Thu', am: 'jessie',  pm: 'jessie'  },
+    { date: new Date(2026, 7, 21), dayName: 'Fri', am: 'mila',    pm: 'mila'    },
+  ];
+
+  // Rolling fortnight pattern (Mon=0 … Fri=4, week A then week B)
+  // Each entry: { dayIndex 0-4, weekday name, am helper, pm helper }
+  const PATTERN = [
+    // Week A
+    { wi: 0, day: 'Mon', am: 'mila',    pm: 'athena'  },
+    { wi: 1, day: 'Tue', am: 'romelyn', pm: 'jessie'  },
+    { wi: 2, day: 'Wed', am: 'mila',    pm: 'athena'  },
+    { wi: 3, day: 'Thu', am: 'jessie',  pm: 'romelyn' },
+    { wi: 4, day: 'Fri', am: 'jessie',  pm: 'athena'  },
+    // Week B
+    { wi: 5, day: 'Mon', am: 'romelyn', pm: 'mila'    },
+    { wi: 6, day: 'Tue', am: 'romelyn', pm: 'athena'  },
+    { wi: 7, day: 'Wed', am: 'mila',    pm: 'jessie'  },
+    { wi: 8, day: 'Thu', am: 'mila',    pm: 'athena'  },
+    { wi: 9, day: 'Fri', am: 'jessie',  pm: 'romelyn' },
+  ];
+
+  // Rolling schedule starts Mon 24 Aug 2026
+  const ROLLING_START = new Date(2026, 7, 24);
+
+  // ── Helpers ────────────────────────────────────────────────────
+  function midnight(d) {
+    return new Date(d.getFullYear(), d.getMonth(), d.getDate());
+  }
+
+  function addDays(d, n) {
+    const r = new Date(d); r.setDate(r.getDate() + n); return r;
+  }
+
+  function fmt(d) {
+    const months = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+    const day = d.getDate();
+    const suffix = day >= 11 && day <= 13 ? 'th'
+      : day % 10 === 1 ? 'st'
+      : day % 10 === 2 ? 'nd'
+      : day % 10 === 3 ? 'rd'
+      : 'th';
+    return `${day}${suffix} ${months[d.getMonth()]}`;
+  }
+
+  function bannerRange(mon, fri) {
+    const pad = n => String(n).padStart(2,'0');
+    const d1 = `${pad(mon.getDate())}/${pad(mon.getMonth()+1)}`;
+    const d2 = `${pad(fri.getDate())}/${pad(fri.getMonth()+1)}`;
+    return `${d1} – ${d2}`;
+  }
+
+  function pill(helper) {
+    const id = `p-${helper}`;
+    const name = helper.charAt(0).toUpperCase() + helper.slice(1);
+    return `<label for="${id}"><span class="dot"></span>${name}</label>`;
+  }
+
+  function dayRow(date, dayName, am, pm, rowClass) {
+    if (isNoSchool(date)) {
+      return `
+      <tr class="no-school-row">
+        <td class="day-cell"><span class="day-label">${dayName} ${fmt(date)}</span></td>
+        <td colspan="2" class="no-school-cell">🚫 No School</td>
+      </tr>`;
+    }
+    return `
+      <tr class="${rowClass}">
+        <td class="day-cell"><span class="day-label">${dayName} ${fmt(date)}</span></td>
+        <td class="name-cell">${pill(am)}</td>
+        <td class="name-cell">${pill(pm)}</td>
+      </tr>`;
+  }
+
+  // Given a Mon date, return array of 5 day objects for that week
+  function rollingWeek(monDate) {
+    // Determine which fortnight offset this Monday is
+    const daysDiff = Math.round((midnight(monDate) - midnight(ROLLING_START)) / 86400000);
+    const weekOffset = Math.floor(daysDiff / 7);
+    const patternOffset = ((weekOffset % 2) + 2) % 2; // 0=Week A, 1=Week B
+    const base = patternOffset * 5;
+    return PATTERN.slice(base, base + 5).map((p, i) => ({
+      date: addDays(monDate, i),
+      dayName: p.day,
+      am: p.am,
+      pm: p.pm,
+    }));
+  }
+
+  // ── Figure out what to show ────────────────────────────────────
+  const today = midnight(new Date());
+  const introEnd = new Date(2026, 7, 21);
+  const rollingEnd = new Date(2027, 5, 25); // Last day of term
+
+  let html = `
+    <div class="table-wrap">
+      <table>
+        <thead>
+          <tr>
+            <th class="day-col">Day</th>
+            <th class="car">Morning</th>
+            <th class="car">Afternoon</th>
+          </tr>
+        </thead>
+        <tbody>`;
+
+  // ── Intro week (show if today <= 21 Aug 2026) ──────────────────
+  if (today <= introEnd) {
+    const introStart = INTRO[0].date;
+    const introFri   = INTRO[INTRO.length - 1].date;
+    html += `
+      <tr class="week-banner">
+        <td class="banner-day">${bannerRange(introStart, introFri)}</td>
+        <td class="banner-am">☀️ Morning</td>
+        <td class="banner-pm">🌆 Afternoon</td>
+      </tr>`;
+    INTRO.forEach((r, i) => {
+      if (r.date >= today) {
+        html += dayRow(r.date, r.dayName, r.am, r.pm, i % 2 === 0 ? 'am-row' : 'pm-row');
+      }
+    });
+  }
+
+  // ── Rolling weeks ──────────────────────────────────────────────
+  // Find the Monday of the current (or next) rolling week
+  function getMondayOf(d) {
+    const day = d.getDay(); // 0=Sun,1=Mon,...
+    const diff = day === 0 ? 1 : (day === 1 ? 0 : -(day - 1));
+    return addDays(d, diff);
+  }
+
+  if (today <= rollingEnd) {
+    let mon = midnight(ROLLING_START);
+    // Advance to the current or upcoming week
+    while (addDays(mon, 4) < today) mon = addDays(mon, 7);
+
+    // Show up to 2 weeks
+    for (let w = 0; w < 2; w++) {
+      const fri = addDays(mon, 4);
+      if (mon > rollingEnd) break;
+
+      const days = rollingWeek(mon);
+      html += `
+        <tr class="week-banner">
+          <td class="banner-day">${bannerRange(mon, fri)}</td>
+          <td class="banner-am">☀️ Morning</td>
+          <td class="banner-pm">🌆 Afternoon</td>
+        </tr>`;
+
+      days.forEach((d, i) => {
+        if (d.date >= today && d.date <= rollingEnd) {
+          html += dayRow(d.date, d.dayName, d.am, d.pm, i % 2 === 0 ? 'am-row' : 'pm-row');
+        }
+      });
+
+      mon = addDays(mon, 7);
+    }
+  }
+
+  html += `</tbody></table></div>`;
+  document.getElementById('rota-table-wrap').innerHTML = html;
+
+})();
+
+// ── Calendar accordion ────────────────────────────────────────────
+(function() {
+  const panel = document.getElementById('panel-cal');
+  if (!panel) return;
+
+  const today = new Date();
+  const thisYear  = today.getFullYear();
+  const thisMonth = today.getMonth(); // 0-based
+
+  // Month lookup: "August 2026" → year/month
+  const MONTH_MAP = {
+    'January':0,'February':1,'March':2,'April':3,'May':4,'June':5,
+    'July':6,'August':7,'September':8,'October':9,'November':10,'December':11
+  };
+
+  // Find all month cards (skip the legend card which has no cal-month-header)
+  const cards = panel.querySelectorAll('.card');
+
+  cards.forEach(card => {
+    const header = card.querySelector('.cal-month-header');
+    if (!header) return; // legend card — skip
+
+    // Parse "August 2026" or "August 2026 Term 1 begins"
+    const text = header.childNodes[0].textContent.trim();
+    const parts = text.split(' ');
+    const monthName = parts[0];
+    const year = parseInt(parts[1]);
+    const monthIdx = MONTH_MAP[monthName];
+    if (monthIdx === undefined || isNaN(year)) return;
+
+    const isPast = (year < thisYear) || (year === thisYear && monthIdx < thisMonth);
+    if (!isPast) return; // current/future months stay expanded as-is
+
+    // Wrap the card in an accordion shell
+    const subtitle = header.querySelector('span') ? header.querySelector('span').textContent : '';
+    const titleText = `${monthName} ${year}${subtitle ? ' · ' + subtitle : ''}`;
+
+    // Build accordion wrapper
+    const accordion = document.createElement('div');
+    accordion.className = 'cal-month-accordion collapsed';
+
+    const toggle = document.createElement('button');
+    toggle.className = 'cal-month-toggle';
+    toggle.innerHTML = `
+      <span>${titleText}</span>
+      <span class="toggle-right">
+        <span class="past-label">Past</span>
+        <span class="toggle-arrow">▼</span>
+      </span>`;
+
+    const body = document.createElement('div');
+    body.className = 'cal-month-body';
+    // Move card contents into body
+    while (card.firstChild) body.appendChild(card.firstChild);
+
+    accordion.appendChild(toggle);
+    accordion.appendChild(body);
+
+    // Replace card with accordion
+    card.replaceWith(accordion);
+
+    toggle.addEventListener('click', () => {
+      accordion.classList.toggle('collapsed');
+    });
+  });
+})();
+
+
+</script>
+</body>
+</html>
