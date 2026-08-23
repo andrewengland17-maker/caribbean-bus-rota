@@ -562,7 +562,6 @@
         </div>
       </div>
       <div id="rota-table-wrap"></div>
-      <p class="footnote"><strong>18–21 Aug: introductory week</strong> (Tue–Fri only). Rolling two-week pattern repeats from 8 Sep. Athena is assigned afternoons only.</p>
     </div>
 
     <!-- ══ TIMES TAB ══ -->
@@ -1096,6 +1095,15 @@
     return NO_SCHOOL.has(isoDate(d));
   }
 
+  // ── One-off overrides (swap specific dates without changing the pattern) ──
+  // To add a swap: just add a line below in the format 'YYYY-MM-DD': { am: 'helper', pm: 'helper' }
+  // Both am and pm must be specified. Delete old entries once the date has passed.
+  // Example: '2026-09-15': { am: 'jessie', pm: 'mila' },
+  const OVERRIDES = {
+    '2026-08-24': { am: 'mila',    pm: 'jessie'  },
+    '2026-08-25': { am: 'romelyn', pm: 'athena'  },
+  };
+
   // ── Schedule data ──────────────────────────────────────────────
   // Intro week: fixed Tue-Fri 18-21 Aug 2026
   const INTRO = [
@@ -1251,7 +1259,9 @@
 
       days.forEach((d, i) => {
         if (d.date >= today && d.date <= rollingEnd) {
-          html += dayRow(d.date, d.dayName, d.am, d.pm, i % 2 === 0 ? 'am-row' : 'pm-row');
+          const key = isoDate(d.date);
+          const ov = OVERRIDES[key];
+          html += dayRow(d.date, d.dayName, ov ? ov.am : d.am, ov ? ov.pm : d.pm, i % 2 === 0 ? 'am-row' : 'pm-row');
         }
       });
 
