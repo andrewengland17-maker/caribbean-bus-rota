@@ -1102,9 +1102,6 @@
   const OVERRIDES = {
     '2026-08-24': { am: 'mila',    pm: 'jessie'  },
     '2026-08-25': { am: 'romelyn', pm: 'athena'  },
-    '2026-09-04': { am: 'jessie', pm: 'romelyn'  },
-    '2026-09-07': { am: 'jessie', pm: 'athena'  },
-    '2026-09-11': { am: 'mila', pm: 'athena'  },
   };
 
   // ── Schedule data ──────────────────────────────────────────────
@@ -1135,6 +1132,18 @@
 
   // Rolling schedule starts Mon 24 Aug 2026
   const ROLLING_START = new Date(2026, 7, 24);
+
+  // Full school holiday weeks (Mon dates). These weeks are entirely off school
+  // and must NOT count towards the Week A / Week B cycle.
+  const HOLIDAY_WEEKS = [
+    new Date(2026,  9, 12),  // Oct half-term (12–16 Oct)
+    new Date(2026, 11, 14),  // Christmas week 1 (14–18 Dec)
+    new Date(2026, 11, 21),  // Christmas week 2 (21–25 Dec)
+    new Date(2026, 11, 28),  // Christmas week 3 (28 Dec – 1 Jan)
+    new Date(2027,  1,  8),  // Lunar NY / school holiday (8–12 Feb)
+    new Date(2027,  2, 29),  // Easter week 1 (29 Mar – 2 Apr)
+    new Date(2027,  3,  5),  // Easter week 2 (5–9 Apr)
+  ];
 
   // ── Helpers ────────────────────────────────────────────────────
   function midnight(d) {
@@ -1187,10 +1196,14 @@
 
   // Given a Mon date, return array of 5 day objects for that week
   function rollingWeek(monDate) {
-    // Determine which fortnight offset this Monday is
+    // Determine which fortnight offset this Monday is.
+    // Holiday weeks (entire week off school) are excluded from the count so
+    // the Week A / Week B cycle isn't disrupted by school closures.
     const daysDiff = Math.round((midnight(monDate) - midnight(ROLLING_START)) / 86400000);
     const weekOffset = Math.floor(daysDiff / 7);
-    const patternOffset = ((weekOffset % 2) + 2) % 2; // 0=Week A, 1=Week B
+    const holidayWeeksPassed = HOLIDAY_WEEKS.filter(hw => midnight(hw) < midnight(monDate)).length;
+    const schoolWeekOffset = weekOffset - holidayWeeksPassed;
+    const patternOffset = ((schoolWeekOffset % 2) + 2) % 2; // 0=Week A, 1=Week B
     const base = patternOffset * 5;
     return PATTERN.slice(base, base + 5).map((p, i) => ({
       date: addDays(monDate, i),
@@ -1348,3 +1361,4 @@
 </script>
 </body>
 </html>
+
